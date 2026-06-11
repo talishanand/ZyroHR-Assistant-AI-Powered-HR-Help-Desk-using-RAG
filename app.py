@@ -1,4 +1,7 @@
 import os
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+os.environ["TRANSFORMERS_NO_ADVISORY_WARNINGS"] = "1"
+
 import streamlit as st
 from langchain_community.document_loaders import PyPDFDirectoryLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -15,6 +18,15 @@ st.set_page_config(
 )
 
 CORPUS_PATH = "hr_docs/"
+
+# ── Debug: show what files Streamlit can see ───────────────────────────────────
+with st.expander("🔍 Debug — click to see file structure (remove after fixing)", expanded=False):
+    import glob
+    st.code(f"Current working directory: {os.getcwd()}")
+    st.code("All files in working directory:\n" + "\n".join(sorted(glob.glob("**/*", recursive=True)[:50])))
+    st.code(f"hr_docs/ exists: {os.path.exists('hr_docs/')}")
+    st.code(f"hr_docs/ contents: {os.listdir('hr_docs/') if os.path.exists('hr_docs/') else 'FOLDER NOT FOUND'}")
+
 REFUSAL_MESSAGE = (
     "I'm sorry, I can only answer HR-related questions from Zyro Dynamics' "
     "internal policy documents. Your question appears to be outside my scope. "
@@ -24,19 +36,23 @@ REFUSAL_MESSAGE = (
 @st.cache_resource(show_spinner="Loading HR policy documents...")
 def build_pipeline():
     if not os.path.exists(CORPUS_PATH):
-        st.error("Missing 'hr_docs/' folder. Please add your HR policy PDFs.")
+        st.error(
+            "Missing 'hr_docs/' folder. "
+            "Please create an 'hr_docs/' folder in your repo and add all 11 HR policy PDFs inside it."
+        )
         st.stop()
 
-    groq_api_key = os.getenv("GROQ_API_KEY")
+    # Check both Streamlit secrets and environment variables
+    groq_api_key = st.secrets.get("GROQ_API_KEY", "") or os.getenv("GROQ_API_KEY", "")
     if not groq_api_key:
-        st.error("Missing GROQ_API_KEY. Add it in Streamlit Secrets.")
+        st.error("Missing GROQ_API_KEY. Go to Streamlit Cloud → App Settings → Secrets and add it.")
         st.stop()
 
     loader = PyPDFDirectoryLoader(CORPUS_PATH)
     documents = loader.load()
 
     if not documents:
-        st.error("No PDF documents found inside 'hr_docs/'.")
+        st.error("No PDF documents found inside 'hr_docs/'. Please add your HR policy PDFs.")
         st.stop()
 
     splitter = RecursiveCharacterTextSplitter(
@@ -46,6 +62,7 @@ def build_pipeline():
     )
     chunks = splitter.split_documents(documents)
 
+    # Use CPU-only, no torchvision needed
     embeddings = HuggingFaceEmbeddings(
         model_name="sentence-transformers/all-MiniLM-L6-v2",
         model_kwargs={"device": "cpu"},
@@ -67,11 +84,13 @@ def build_pipeline():
 
     return retriever, llm
 
+
 def format_docs(docs):
     return "\n\n".join(
         f"[Source: {d.metadata.get('source', 'Unknown')}, Page {d.metadata.get('page', '?')}]\n{d.page_content}"
         for d in docs
     )
+
 
 RAG_PROMPT = ChatPromptTemplate.from_messages([
     (
@@ -98,6 +117,7 @@ Reply ONLY with IN_SCOPE or OUT_OF_SCOPE."""
     ("human", "{question}")
 ])
 
+
 def ask_bot(question, retriever, llm):
     cls_prompt = OOS_PROMPT.invoke({"question": question})
     cls = StrOutputParser().invoke(llm.invoke(cls_prompt)).strip().upper()
@@ -108,19 +128,18 @@ def ask_bot(question, retriever, llm):
     docs = retriever.invoke(question)
     context = format_docs(docs)
 
-    prompt_val = RAG_PROMPT.invoke({
-        "context": context,
-        "question": question
-    })
+    prompt_val = RAG_PROMPT.invoke({"context": context, "question": question})
     answer = StrOutputParser().invoke(llm.invoke(prompt_val))
 
     sources = sorted({
-        f"{d.metadata.get('source', 'Unknown')} (Page {d.metadata.get('page', '?')})"
+        f"{os.path.basename(d.metadata.get('source', 'Unknown'))} (Page {d.metadata.get('page', '?')})"
         for d in docs
     })
 
     return {"answer": answer, "sources": sources, "is_oos": False}
 
+
+# ── UI ─────────────────────────────────────────────────────────────────────────
 st.title("🏢 Zyro Dynamics HR Help Desk")
 st.caption("Ask any question about Zyro Dynamics HR policies — leave, salary, performance, WFH, and more.")
 st.divider()
@@ -169,22 +188,12 @@ with st.sidebar:
     )
     st.divider()
     st.markdown("**Policies covered:**")
-
-    policies = [
-        "Company Profile",
-        "Employee Handbook",
-        "Leave Policy",
-        "Work From Home Policy",
-        "Code of Conduct",
-        "Performance Review",
-        "Compensation & Benefits",
-        "IT & Data Security",
-        "POSH Policy",
-        "Onboarding & Separation",
-        "Travel & Expense"
-    ]
-
-    for p in policies:
+    for p in [
+        "Company Profile", "Employee Handbook", "Leave Policy",
+        "Work From Home Policy", "Code of Conduct", "Performance Review",
+        "Compensation & Benefits", "IT & Data Security",
+        "POSH Policy", "Onboarding & Separation", "Travel & Expense"
+    ]:
         st.markdown(f"- {p}")
 
     if st.button("Clear Chat"):
