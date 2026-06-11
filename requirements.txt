@@ -1,6 +1,7 @@
-langchain==0.3.25
-langchain-community==0.3.24
-langchain-core==0.3.59  
+langchain==0.3.x
+langchain-core==0.3.x
+langchain-community==0.3.x
+langchain-google-genai==2.x.x 
 langchain-text-splitters==0.3.8
 langchain-huggingface==0.1.2
 langchain-groq==0.3.2
