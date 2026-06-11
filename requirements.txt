@@ -2,12 +2,12 @@ streamlit==1.45.1
 
 langchain==0.3.25
 langchain-community==0.3.24
-langchain-core==0.3.58
+langchain-core==0.3.59
 langchain-text-splitters==0.3.8
 langchain-huggingface==0.1.2
 langchain-groq==0.3.2
 
-faiss-cpu==1.8.0.post1
+faiss-cpu==1.12.0
 sentence-transformers==2.7.0
 transformers==4.41.2
 
@@ -16,4 +16,3 @@ python-dotenv==1.1.0
 
 numpy==1.26.4
 huggingface_hub==0.23.2
-
