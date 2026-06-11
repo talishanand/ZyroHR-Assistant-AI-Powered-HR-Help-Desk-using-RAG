@@ -36,25 +36,23 @@ REFUSAL_MESSAGE = (
 @st.cache_resource(show_spinner="Loading HR policy documents...")
 def build_pipeline():
     if not os.path.exists(CORPUS_PATH):
-        st.error(
-            "Missing 'hr_docs/' folder. "
-            "Please create an 'hr_docs/' folder in your repo and add all 11 HR policy PDFs inside it."
-        )
+        st.error("Missing 'hr_docs/' folder. Please add your HR policy PDFs.")
         st.stop()
 
-    # Check both Streamlit secrets and environment variables
-    groq_api_key = st.secrets.get("GROQ_API_KEY", "") or os.getenv("GROQ_API_KEY", "")
+    files = os.listdir(CORPUS_PATH)
+    st.write("Files in hr_docs:", files)
+
+    if not files:
+        st.error("No files found inside hr_docs/")
+        st.stop()
+
+    groq_api_key = os.getenv("GROQ_API_KEY")
     if not groq_api_key:
-        st.error("Missing GROQ_API_KEY. Go to Streamlit Cloud → App Settings → Secrets and add it.")
+        st.error("Missing GROQ_API_KEY. Add it in Streamlit Secrets.")
         st.stop()
 
     loader = PyPDFDirectoryLoader(CORPUS_PATH)
     documents = loader.load()
-
-    if not documents:
-        st.error("No PDF documents found inside 'hr_docs/'. Please add your HR policy PDFs.")
-        st.stop()
-
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=800,
         chunk_overlap=150,
