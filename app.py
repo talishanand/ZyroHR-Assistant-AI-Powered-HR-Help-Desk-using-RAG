@@ -78,7 +78,7 @@ def build_pipeline():
         st.stop()
 
     # ── 3. Load PDFs ───────────────────────────────────────────────────────────
-    from langchain_community.document_loaders import PyPDFDirectoryLoader
+    from sentence_transformers import SentenceTransformer
     loader = PyPDFDirectoryLoader(corpus_path)
     documents = loader.load()
 
