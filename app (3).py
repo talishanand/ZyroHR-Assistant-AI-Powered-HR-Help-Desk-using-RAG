@@ -13,23 +13,19 @@ st.set_page_config(
 
 # ── Find hr_docs folder anywhere in the repo ──────────────────────────────────
 def find_corpus():
-    """Search common locations for the hr_docs folder."""
-    candidates = [
-        "hr_docs",
-        "hr_docs/",
-        "./hr_docs",
-        os.path.join(os.path.dirname(__file__), "hr_docs"),
-    ]
-    # Also search recursively one level deep
-    for entry in os.listdir("."):
-        if os.path.isdir(entry):
-            candidates.append(entry)
+    """Search for PDFs - checks root dir first, then any subfolder."""
+    # Check root directory directly
+    root_pdfs = [f for f in os.listdir(".") if f.lower().endswith(".pdf")]
+    if root_pdfs:
+        return ".", root_pdfs
 
-    for path in candidates:
-        if os.path.isdir(path):
-            pdfs = [f for f in os.listdir(path) if f.lower().endswith(".pdf")]
+    # Check one level of subfolders
+    for entry in os.listdir("."):
+        if os.path.isdir(entry) and not entry.startswith("."):
+            pdfs = [f for f in os.listdir(entry) if f.lower().endswith(".pdf")]
             if pdfs:
-                return path, pdfs
+                return entry, pdfs
+
     return None, []
 
 
