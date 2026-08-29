@@ -134,7 +134,7 @@ def retrieve(query, model, index, chunks, k=5):
 def call_llm(groq_client, system_prompt, user_message):
     """Call Groq LLM directly."""
     response = groq_client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="openai/gpt-oss-120b",
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user",   "content": user_message}
